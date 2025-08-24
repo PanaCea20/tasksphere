@@ -1,0 +1,32 @@
+name: CI
+on:
+  push: { branches: [ main ] }
+  pull_request: { branches: [ main ] }
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: tasksphere
+          POSTGRES_USER: tasksphere
+          POSTGRES_PASSWORD: tasksphere
+        ports: [ "5432:5432" ]
+        options: >-
+          --health-cmd "pg_isready -U tasksphere"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: 'temurin', java-version: '17' }
+      - name: Cache Maven
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: maven-${{ hashFiles('**/pom.xml') }}
+      - name: Verify
+        run: mvn -B -e -Dspring.datasource.url=jdbc:postgresql://localhost:5432/tasksphere -Dspring.datasource.username=tasksphere -Dspring.datasource.password=tasksphere verify
