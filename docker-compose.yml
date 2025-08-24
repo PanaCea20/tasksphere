@@ -1,31 +1,41 @@
-version: "3.9"
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:16.10-alpine
+    container_name: tasksphere-db
     environment:
       POSTGRES_DB: tasksphere
       POSTGRES_USER: tasksphere
       POSTGRES_PASSWORD: tasksphere
     ports: ["5432:5432"]
-    volumes: ["pgdata:/var/lib/postgresql/data"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    command: [ "redis-server", "--appendonly", "yes" ]
+    ports:
+      - "6379:6379"        # change left side if 6379 is busy on your host
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U tasksphere"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 5s
-      timeout: 5s
-      retries: 10
+      timeout: 3s
+      retries: 30
 
   app:
     build: .
+    container_name: tasksphere-app
     depends_on:
-      db: { condition: service_healthy }
+      - db
     environment:
       DB_HOST: db
       DB_PORT: 5432
       DB_NAME: tasksphere
       DB_USER: tasksphere
       DB_PASSWORD: tasksphere
-      JWT_SECRET: kW7HFOSXgd+T4hwCyKQ0LzV6HStREG9j4v0WuW0gHFPMp+xlR4whU5A30RG4MnoC
-      PORT: 8080
+      JWT_SECRET: "kW7HFOSXgd+T4hwCyKQ0LzV6HStREG9j4v0WuW0gHFPMp+xlR4whU5A30RG4MnoC"
+      SPRING_DATA_REDIS_HOST: redis   # << important
+      SPRING_DATA_REDIS_PORT: 6379    # container port (NOT 6380 etc.)
+      SPRING_DATA_REDIS_PASSWORD: ""  # omit if you didn't set a Redis password
     ports: ["8080:8080"]
 
 volumes:

@@ -14,7 +14,6 @@ import java.util.Date;
 
 @Service
 public class JwtService {
-
     private final Key key;
     private final long ttlMinutes;
 
@@ -34,17 +33,16 @@ public class JwtService {
     }
 
     public boolean isTokenValid(String token, UserDetails user) {
-        Jws<Claims> jws = parse(token);
-        String subject = jws.getBody().getSubject();
-        Date exp = jws.getBody().getExpiration();
-        return user.getUsername().equals(subject) && exp.after(new Date());
+        var jws = parse(token);
+        return user.getUsername().equals(jws.getBody().getSubject())
+                && jws.getBody().getExpiration().after(new Date());
     }
 
-    public String generateToken(UserDetails user) {
-        Date now = new Date();
-        Date exp = new Date(now.getTime() + Duration.ofMinutes(ttlMinutes).toMillis());
+    public String generateToken(String subject) {
+        var now = new Date();
+        var exp = new Date(now.getTime() + Duration.ofMinutes(ttlMinutes).toMillis());
         return Jwts.builder()
-                .setSubject(user.getUsername())
+                .setSubject(subject)
                 .setIssuedAt(now)
                 .setExpiration(exp)
                 .signWith(key, SignatureAlgorithm.HS256)
@@ -56,12 +54,9 @@ public class JwtService {
     }
 
     private static Key toKey(String secret) {
-        // Prefer Base64 secrets; fall back to raw bytes if not Base64
-        try {
-            return Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
-        } catch (IllegalArgumentException ignore) {
+        try { return Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret)); }
+        catch (IllegalArgumentException ignore) {
             return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         }
     }
 }
-

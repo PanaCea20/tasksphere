@@ -9,4 +9,3 @@ public class TaskSphereApplication {
         SpringApplication.run(TaskSphereApplication.class, args);
     }
 }
-

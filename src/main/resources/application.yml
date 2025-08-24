@@ -1,42 +1,50 @@
+server:
+  port: 8080
+
 spring:
-  application:
-    name: tasksphere
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:tasksphere}
     username: ${DB_USER:tasksphere}
     password: ${DB_PASSWORD:tasksphere}
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: validate   # Flyway manages schema
     properties:
       hibernate:
         format_sql: true
-        jdbc.time_zone: UTC
     open-in-view: false
   flyway:
     enabled: true
+    baseline-on-migrate: false
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:}
+      timeout: 2s
 
-server:
-  port: ${PORT:8080}
-  forward-headers-strategy: native
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
 
-security:
-  jwt:
-    secret: ${JWT_SECRET:change-me-please-long-secret}
-    issuer: tasksphere
-    expiration-minutes: 60
+logging:
+  level:
+    root: INFO
+    level:
+      org.springframework.data.redis: DEBUG
+      io.lettuce.core: INFO
+  pattern:
+    console: "%msg%n"  # logstash appender handles JSON
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,env,threaddump,heapdump,loggers
+        include: health,info,metrics,env
   endpoint:
     health:
-      probes:
-        enabled: true
+      show-details: always
 
-logging:
-  level:
-    root: INFO
-    org.springframework.security: INFO
+# Logback encoder config is picked from dependency; fine as-is

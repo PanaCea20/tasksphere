@@ -1,49 +1,43 @@
 package com.example.tasksphere.web;
 
-import com.example.tasksphere.common.dto.TaskDtos;
-import com.example.tasksphere.common.mapper.TaskMapper;
-import com.example.tasksphere.service.TaskService;
+import com.example.tasksphere.api.dto.TaskDtos;
+import com.example.tasksphere.domain.Project;
+import com.example.tasksphere.domain.ProjectRepository;
+import com.example.tasksphere.domain.Task;
+import com.example.tasksphere.domain.TaskRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.*;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/tasks")
 @RequiredArgsConstructor
 public class TaskController {
-    private final TaskService service;
-    private final TaskMapper mapper;
-    private Long userId(Authentication a){ return (Long) a.getDetails(); }
+
+    private final TaskRepository tasks;
+    private final ProjectRepository projects;
 
     @PostMapping
-    public ResponseEntity<?> create(@Valid @RequestBody TaskDtos.Create req, Authentication a) {
-        var t = service.create(req.projectId(), req.title(), req.status(), req.dueDate(), userId(a));
-        return ResponseEntity.ok(mapper.toView(t));
+    public TaskDtos.View create(@Valid @RequestBody TaskDtos.Create req) {
+        Project project = projects.findById(req.projectId()).orElseThrow();
+        Task t = tasks.save(Task.builder()
+                .project(project)
+                .title(req.title())
+                .status(req.status())
+                .dueDate(req.dueDate())
+                .build());
+        return new TaskDtos.View(t.getId(), t.getProject().getId(), t.getTitle(), t.getStatus(), t.getDueDate());
     }
 
     @GetMapping
-    public Page<TaskDtos.View> list(@RequestParam Long projectId,
-                                    @RequestParam(defaultValue="0") int page,
-                                    @RequestParam(defaultValue="20") int size,
-                                    @RequestParam(defaultValue="createdAt,desc") String sort,
-                                    Authentication a) {
-        var pageable = PageRequest.of(page, size, Sort.by(sort.split(",")));
-        return service.list(projectId, pageable, userId(a)).map(mapper::toView);
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable Long id, @Valid @RequestBody TaskDtos.Update req, Authentication a) {
-        var t = service.update(id, req.title(), req.status(), req.dueDate(), userId(a));
-        return ResponseEntity.ok(mapper.toView(t));
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> delete(@PathVariable Long id, Authentication a) {
-        service.delete(id, userId(a));
-        return ResponseEntity.noContent().build();
+    public List<TaskDtos.View> list(@RequestParam(required = false) Long projectId) {
+        var list = (projectId == null) ? tasks.findAll() : tasks.findByProjectId(projectId);
+        return list.stream()
+                .map(t -> new TaskDtos.View(t.getId(), t.getProject().getId(), t.getTitle(), t.getStatus(), t.getDueDate()))
+                .toList();
     }
 }
+
 
