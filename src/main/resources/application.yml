@@ -22,6 +22,8 @@ spring:
       port: ${SPRING_DATA_REDIS_PORT:6379}
       password: ${SPRING_DATA_REDIS_PASSWORD:}
       timeout: 2s
+      repositories:
+        enabled: false
 
 springdoc:
   api-docs:
@@ -31,6 +33,8 @@ springdoc:
 
 logging:
   level:
+    org.springframework.data.redis: WARN
+    org.springframework.security.config.annotation.authentication.configuration.InitializeUserDetailsBeanManagerConfigurer: ERROR
     root: INFO
     level:
       org.springframework.data.redis: DEBUG

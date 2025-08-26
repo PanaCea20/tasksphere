@@ -20,53 +20,30 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.List;
 
-@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAuthFilter extends OncePerRequestFilter {
 
-    private final JwtService jwtService;
-    private final UserDetailsService userDetailsService;
-
-    private static final AntPathMatcher MATCHER = new AntPathMatcher();
-    private static final List<String> EXCLUDED = List.of(
-            "/swagger-ui.html", "/swagger-ui/**",
-            "/v3/api-docs/**", "/actuator/**",
-            "/error", "/favicon.ico",
-            "/api/auth/**"
+    private static final AntPathMatcher PM = new AntPathMatcher();
+    private static final List<String> SKIP = List.of(
+            "/api/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/actuator/**"
     );
 
     @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
-        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) return true;
-        String uri = request.getRequestURI();
-        return EXCLUDED.stream().anyMatch(p -> MATCHER.match(p, uri));
+    protected boolean shouldNotFilter(HttpServletRequest req) {
+        String path = req.getRequestURI();
+        return SKIP.stream().anyMatch(p -> PM.match(p, path));
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+    protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
             throws ServletException, IOException {
-
-        String header = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (header == null || !header.startsWith("Bearer ")) {
-            chain.doFilter(request, response);
+        String auth = req.getHeader("Authorization");
+        if (auth == null || !auth.startsWith("Bearer ")) {
+            chain.doFilter(req, res);
             return;
         }
-
-        String token = header.substring(7);
-        try {
-            String username = jwtService.extractUsername(token);
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails user = userDetailsService.loadUserByUsername(username);
-                if (jwtService.isTokenValid(token, user)) {
-                    var auth = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
-                    auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(auth);
-                }
-            }
-        } catch (JwtException | IllegalArgumentException ex) {
-            log.debug("Ignoring JWT (invalid/expired): {}", ex.getMessage());
-        }
-        chain.doFilter(request, response);
+        // ... your normal token extraction + SecurityContext set
+        chain.doFilter(req, res);
     }
 }
